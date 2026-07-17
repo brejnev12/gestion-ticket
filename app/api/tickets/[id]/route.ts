@@ -22,10 +22,8 @@ export async function GET(
       },
     );
   }
-
   return NextResponse.json(ticket);
 }
-
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
@@ -47,7 +45,6 @@ export async function PUT(
 
   return NextResponse.json(ticket);
 }
-
 export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> },

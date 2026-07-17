@@ -2,7 +2,6 @@ import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { getUserFromToken } from "@/lib/auth";
 
-
 export async function POST(request: Request) {
   const user = getUserFromToken(request);
   if (!user) {
@@ -18,7 +17,6 @@ export async function POST(request: Request) {
   });
   return NextResponse.json(ticket);
 }
-
 export async function GET(request: Request) {
   const user = getUserFromToken(request);
   if (!user) {
