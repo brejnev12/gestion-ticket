@@ -8,8 +8,8 @@ export default function LoginPage() {
     email: "",
     password: "",
   });
-  const [message, setMessage] = useState("");
 
+  const [message, setMessage] = useState("");
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     const response = await fetch("/api/authentification/login", {
@@ -21,11 +21,11 @@ export default function LoginPage() {
     });
 
     const data = await response.json();
-    console.log(data);
+
     if (response.ok) {
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
-      router.push("/dashboard");
+      router.push("/administration");
     } else {
       setMessage(data.message || "Erreur connexion");
     }
@@ -62,7 +62,7 @@ export default function LoginPage() {
           }
         />
         <button className="w-full rounded bg-black p-2 text-white">
-          Se connecter
+          Connexion
         </button>
         {message && <p>{message}</p>}
       </form>
