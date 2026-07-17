@@ -1,0 +1,38 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+enum Role {
+  USER
+  ADMIN
+}
+
+enum Status {
+  OPEN
+  CLOSED
+}
+
+model User {
+  id       Int      @id @default(autoincrement())
+  name     String
+  email    String   @unique
+  password String
+  role     Role     @default(USER)
+  tickets  Ticket[]
+}
+
+model Ticket {
+  id          Int      @id @default(autoincrement())
+  title       String
+  description String
+  status      Status   @default(OPEN)
+  createdAt   DateTime @default(now())
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id])
+}
+
