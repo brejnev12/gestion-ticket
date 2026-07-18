@@ -132,8 +132,7 @@ Cette information peut être utilisée pour effectuer des attaques hors ligne (o
 2. Observation de la réponse JSON.
 3. Présence du champ `password` dans l'objet `user`.
 
-Résultat obtenu : ![Image preuve login](imagespreuves/v2-password.png)
-
+Résultat obtenu : ![Image preuve login](imagespreuves/v2-password-expose.png)
 
 ## Impact
 Cette vulnérabilité expose des informations sensibles de la base de données et augmente le risque de compromission des comptes utilisateurs.
