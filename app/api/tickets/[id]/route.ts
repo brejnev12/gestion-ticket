@@ -1,63 +1,101 @@
-import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import * as TicketController from "@/features/tickets/ticket.controller";
+import * as TicketService from "@/features/tickets/ticket.service";
+import { verifyAccessToken } from "@/features/authentification/auth.jwt";
+
+async function getUser(request: Request) {
+  const token = request.headers
+    .get("cookie")
+    ?.split("access_token=")[1]
+    ?.split(";")[0];
+
+  if (!token) {
+    throw new Error("Non authentifié");
+  }
+
+  return verifyAccessToken(token);
+}
 
 export async function GET(
   request: Request,
-  { params }: { params: Promise<{ id: string }> },
+  {
+    params,
+  }: {
+    params: Promise<{ id: string }>;
+  },
 ) {
-  const { id } = await params;
-  const ticket = await prisma.ticket.findUnique({
-    where: {
-      id: Number(id),
-    },
-  });
+  try {
+    const user = await getUser(request);
 
-  if (!ticket) {
+    const { id } = await params;
+
+    const ticket = await TicketService.getById(Number(id), user.idUser);
+
+    return NextResponse.json(ticket);
+  } catch (error) {
     return NextResponse.json(
       {
-        message: "Ticket introuvable",
+        message: error instanceof Error ? error.message : "Erreur serveur",
       },
       {
-        status: 404,
+        status: 403,
       },
     );
   }
-  return NextResponse.json(ticket);
 }
 export async function PUT(
   request: Request,
-  { params }: { params: Promise<{ id: string }> },
+  {
+    params,
+  }: {
+    params: Promise<{ id: string }>;
+  },
 ) {
-  const { id } = await params;
+  try {
+    const user = await getUser(request);
 
-  const { title, description, status } = await request.json();
+    const { id } = await params;
 
-  const ticket = await prisma.ticket.update({
-    where: {
-      id: Number(id),
-    },
-    data: {
-      title,
-      description,
-      status,
-    },
-  });
+    const body = await request.json();
 
-  return NextResponse.json(ticket);
+    const ticket = await TicketController.update(Number(id), body, user.idUser);
+
+    return NextResponse.json(ticket);
+  } catch (error) {
+    return NextResponse.json(
+      {
+        message: error instanceof Error ? error.message : "Erreur serveur",
+      },
+      {
+        status: 403,
+      },
+    );
+  }
 }
+
 export async function DELETE(
   request: Request,
-  { params }: { params: Promise<{ id: string }> },
+  {
+    params,
+  }: {
+    params: Promise<{ id: string }>;
+  },
 ) {
-  const { id } = await params;
-
-  await prisma.ticket.delete({
-    where: {
-      id: Number(id),
-    },
-  });
-
-  return NextResponse.json({
-    message: "Ticket supprimé",
-  });
+  try {
+    const user = await getUser(request);
+    const { id } = await params;
+    await TicketService.remove(Number(id), user.idUser);
+    return NextResponse.json({
+      message: "Ticket supprimé",
+    });
+  } catch (error) {
+    return NextResponse.json(
+      {
+        message: error instanceof Error ? error.message : "Erreur serveur",
+      },
+      {
+        status: 403,
+      },
+    );
+  }
 }
