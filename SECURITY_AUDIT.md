@@ -10,6 +10,8 @@ Ce projet consiste à développer une application web de gestion de tickets perm
 - Authentification faible
 - Stockage du JWT dans Local Storage
 - Absence de validation des entrées
+- Mass Assignment / Privilege Escalation
+- Security Misconfiguration / Absence de Security Headers
 
 
 # 3. Audit détaillé des vulnérabilités
@@ -233,3 +235,283 @@ Exemple :
 {
   "message": "Trop de tentatives. Réessayez plus tard."
 }
+
+# 4 — Cross-Site Scripting (Stored XSS)
+## Type
+Injection
+
+## Endpoint concerné
+- POST /api/tickets
+- Page `/Administration`
+
+## Description
+L'application permet de stocker du contenu JavaScript dans les descriptions des tickets.
+Lorsqu'un autre utilisateur consulte le ticket, le script est exécuté dans son navigateur.
+
+## Cause
+Les données utilisateurs sont affichées sans filtrage HTML.
+L'utilisation de :
+
+dangerouslySetInnerHTML
+
+permet l'exécution directe du contenu fourni par l'utilisateur.
+
+## Exploitation
+Un utilisateur crée un ticket contenant :
+
+<script>alert('XSS')</script>
+
+Lorsqu'un utilisateur consulte le ticket, le navigateur exécute le script.
+
+## Preuves
+- Requête Postman contenant le payload XSS.
+- Capture navigateur montrant l'exécution du JavaScript.
+
+## Impact
+Cette vulnérabilité peut permettre :
+- le vol de cookies ;
+- le vol de données utilisateur ;
+- l'exécution d'actions au nom de la victime.
+
+## Criticité
+Élevée
+
+## Correction appliquée (branche secure)
+Suppression de l'affichage HTML non sécurisé.
+Utilisation du rendu React classique :
+
+{ticket.description}
+
+ou ajout d'un système de nettoyage HTML.
+
+## Validation après correction
+Les scripts envoyés dans un ticket sont affichés comme du texte et ne sont plus exécutés dans le navigateur.
+
+# 5 — Mass Assignment / Privilege Escalation
+## Type
+Insecure Design
+
+## Endpoint concerné
+
+- PUT /api/users/[id]
+
+## Description
+L'API accepte directement les données envoyées par l'utilisateur sans filtrer les champs modifiables.
+Un utilisateur peut modifier des propriétés sensibles comme son rôle.
+
+## Cause
+Le backend utilise directement les données reçues :
+
+data: body
+
+Tous les champs sont donc modifiables.
+
+## Exploitation
+Un utilisateur normal envoie :
+json
+{
+"role":"ADMIN"
+}
+
+L'application applique la modification sans contrôle.
+
+## Preuve
+Une requête PUT permet de modifier le rôle USER vers ADMIN.
+
+## Impact
+Un attaquant peut obtenir des privilèges administrateur et accéder à des ressources protégées.
+
+## Criticité
+Critique
+
+## Correction appliquée (branche secure)
+Les champs modifiables sont explicitement définis.
+Le rôle ne peut être modifié que par un administrateur.
+
+## Validation après correction
+Un utilisateur normal ne peut plus modifier son rôle.
+Toute tentative retourne une erreur d'autorisation.
+
+# 6 — JWT mal sécurisé / Stockage du token dans Local Storage
+## Type
+Identification and Authentication Failures
+
+## Endpoint / zone concernée
+### Backend
+POST /api/authentification/login
+
+### Frontend
+app/login/page.tsx
+
+## Description
+Après une authentification réussie, l'application stocke le token JWT dans le `localStorage` du navigateur.
+Cette méthode présente un risque de sécurité car le token est accessible depuis JavaScript côté client.
+En cas d'exploitation d'une vulnérabilité XSS, un attaquant pourrait récupérer ce token et l'utiliser pour usurper l'identité d'un utilisateur.
+
+## Cause technique
+Le token JWT est enregistré directement dans le navigateur :
+localStorage.setItem("token", data.token);
+Le stockage `localStorage` n'applique aucune protection particulière :
+- pas de protection HttpOnly ;
+- accessible par les scripts JavaScript ;
+- disponible jusqu'à sa suppression.
+
+## Exploitation
+Un attaquant exploitant une faille XSS peut exécuter du code JavaScript permettant de récupérer le token : localStorage.getItem("token")
+
+Le token obtenu peut ensuite être utilisé dans les requêtes API :
+
+Authorization: Bearer TOKEN_VOLÉ
+
+L'attaquant peut alors effectuer des actions avec les droits de la victime.
+
+## Preuve
+Test réalisé dans le navigateur :
+1. Connexion avec un compte utilisateur.
+2. Ouverture des outils développeur.
+3. Navigation vers :
+
+Application
+ → Local Storage
+ → localhost:3000
+
+4. Observation de la présence du JWT.
+Exemple :
+token =eyJhbGciOiJIUzI1NiIsInR5cCI6...
+Une capture d'écran du Local Storage contenant le token est ajoutée au rapport.
+
+## Impact
+Cette vulnérabilité peut permettre :
+- le vol de session utilisateur ;
+- l'usurpation d'identité ;
+- l'accès aux données privées ;
+- l'exécution d'actions avec les permissions de la victime.
+
+## Criticité
+Élevée
+
+## Correction appliquée (branche `secure`)
+Le stockage du JWT dans `localStorage` est supprimé.
+Le token est désormais stocké dans un cookie sécurisé :
+
+- HttpOnly : inaccessible depuis JavaScript ;
+- Secure : envoyé uniquement en HTTPS ;
+- SameSite : protection contre certaines attaques CSRF.
+
+Exemple :
+
+response.cookies.set(
+  "access_token",
+  token,
+  {
+    httpOnly: true,
+    secure: true,
+    sameSite: "strict"
+  }
+);
+
+## Validation après correction
+Après correction :
+- aucun token JWT n'est présent dans le Local Storage ;
+- le token est uniquement stocké dans un cookie HttpOnly ;
+- JavaScript ne peut plus récupérer le token.
+
+La tentative :
+localStorage.getItem("token")
+
+retourne :
+null
+
+La faille est considérée comme corrigée.
+
+
+# 7 — Security Misconfiguration / Absence de Security Headers
+## Type
+Security Misconfiguration
+
+## Endpoint / zone concernée
+http://localhost:3000
+
+Toutes les réponses HTTP de l'application sont concernées.
+
+## Description
+L'application ne configure pas certains headers HTTP de sécurité permettant de renforcer la protection du navigateur.
+L'absence de ces protections peut faciliter certaines attaques comme :
+- Clickjacking ;
+- attaques XSS ;
+- interprétation incorrecte du contenu ;
+- exploitation de certaines failles côté navigateur.
+
+## Cause technique
+La version vulnerable ne définit pas de middleware de sécurité ajoutant des headers HTTP.
+Les réponses serveur ne contiennent pas de protections supplémentaires comme :
+X-Frame-Options
+X-Content-Type-Options
+Content-Security-Policy
+Strict-Transport-Security
+
+## Exploitation
+Un attaquant peut profiter de l'absence de ces protections pour :
+- intégrer l'application dans une iframe malveillante;
+- augmenter l'impact d'une vulnérabilité XSS ;
+- exploiter des comportements non sécurisés du navigateur.
+
+Exemple :
+<iframe src="http://localhost:3000/dashboard"></iframe>
+
+Sans protection adaptée, la page peut être chargée dans un autre site.
+
+## Preuve
+Test réalisé avec la commande :
+curl -I http://localhost:3000
+
+Résultat observé dans la version vulnerable :
+HTTP/1.1 200 OK
+Content-Type: text/html
+
+Les headers de sécurité attendus sont absents.
+Capture de la réponse HTTP ajoutée au rapport.
+## Impact
+Cette mauvaise configuration peut permettre :
+- des attaques Clickjacking ;
+- une réduction de la protection contre les attaques XSS ;
+- une augmentation de la surface d'attaque côté navigateur.
+
+## Criticité
+Moyenne
+
+## Correction appliquée (branche `secure`)
+Ajout d'un middleware Next.js permettant d'ajouter les headers de sécurité.
+
+Exemple :
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+export function middleware(request: NextRequest) {
+  const response = NextResponse.next();
+  response.headers.set(
+    "X-Content-Type-Options",
+    "nosniff"
+  );
+  response.headers.set(
+    "X-Frame-Options",
+    "DENY"
+  );
+  response.headers.set(
+    "Content-Security-Policy",
+    "default-src 'self'"
+  );
+  return response;
+}
+
+## Validation après correction
+Après correction :
+La commande :
+curl -I http://localhost:3000
+
+
+retourne les headers de sécurité :
+X-Content-Type-Options: nosniff
+X-Frame-Options: DENY
+Content-Security-Policy: default-src 'self'
+
+La configuration de sécurité du navigateur est renforcée.
