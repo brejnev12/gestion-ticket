@@ -56,9 +56,18 @@ Si le ticket appartient à un autre utilisateur, l'application autorise malgré 
 
 ## Preuves
 Les preuves sont réalisées avec Postman :
-- consultation d'un ticket appartenant à un autre utilisateur (`GET`) ;
-- modification d'un ticket appartenant à un autre utilisateur (`PUT`) ;
-- suppression d'un ticket appartenant à un autre utilisateur (`DELETE`).
+### 1. Consultation non autorisée d'un ticket (GET)
+Un utilisateur authentifié tente d'accéder à un ticket appartenant à un autre utilisateur :
+GET /api/tickets/2
+Résultat obtenu :![Image preuve get](imagespreuves/v1-idor-get.png)
+
+### 2. Modification d'un ticket appartenant à un autre utilisateur (`PUT`)
+PUT /api/tickets/2
+Résultat obtenu : ![Image preuve put](imagespreuves/v1-idor-put.png)
+
+### 3. suppression d'un ticket appartenant à un autre utilisateur (`DELETE`)
+DELETE /api/tickets/2
+Résultat obtenu : ![Image preuve delete](imagespreuves/v1-idor-delete.png)
 
 Des captures d'écran des requêtes et des réponses sont jointes au rapport.
 
