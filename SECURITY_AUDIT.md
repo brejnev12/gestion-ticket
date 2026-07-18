@@ -57,7 +57,7 @@ Si le ticket appartient à un autre utilisateur, l'application autorise malgré 
 ## Preuves
 Les preuves sont réalisées avec Postman :
 ### 1. Consultation non autorisée d'un ticket (GET)
-Un utilisateur authentifié tente d'accéder à un ticket appartenant à un autre utilisateur :
+- Un utilisateur authentifié tente d'accéder à un ticket appartenant à un autre utilisateur :
 GET /api/tickets/2
 Résultat obtenu :![Image preuve get](imagespreuves/v1-idor-get.png)
 
@@ -77,14 +77,11 @@ Cette vulnérabilité permet à un utilisateur malveillant de :
 - modifier un ticket qui ne lui appartient pas ;
 - supprimer un ticket appartenant à un autre utilisateur.
 
-Elle compromet la confidentialité et l'intégrité des données de l'application.
-
 ## Criticité
 Élevée
 
 ## Correction appliquée (branche `secure`)
 Avant toute opération sur un ticket, l'application vérifie que celui-ci appartient bien à l'utilisateur authentifié.
-
 Exemple :
 
 const ticket = await prisma.ticket.findFirst({
@@ -97,7 +94,6 @@ const ticket = await prisma.ticket.findFirst({
 Si le ticket n'appartient pas à l'utilisateur connecté, l'API retourne une erreur 403 Forbidden ou 404 Not Found.
 
 ## Validation après correction
-
 Après application de la correction :
 - un utilisateur ne peut consulter que ses propres tickets ;
 - un utilisateur ne peut modifier que ses propres tickets ;
@@ -136,7 +132,8 @@ Cette information peut être utilisée pour effectuer des attaques hors ligne (o
 2. Observation de la réponse JSON.
 3. Présence du champ `password` dans l'objet `user`.
 
-Une capture d'écran de la réponse Postman est jointe au rapport.
+Résultat obtenu : ![Image preuve login](imagespreuves/v2-password.png)
+
 
 ## Impact
 Cette vulnérabilité expose des informations sensibles de la base de données et augmente le risque de compromission des comptes utilisateurs.
@@ -205,16 +202,17 @@ Avec différents mots de passe :
 L'application continue de répondre normalement sans bloquer l'utilisateur.
 
 ## Preuves
-Test réalisé avec Postman :
-Plusieurs tentatives de connexion échouées sont envoyées successivement.
+- Test réalisé avec Postman :
+- Plusieurs tentatives de connexion échouées sont envoyées successivement.
 Exemple de réponse :
 
 {
   "message": "Identifiants incorrects"
 }
 
+Résultat obtenu : ![Image preuve ](imagespreuves/v3-bruteforce.png)
+
 La requête peut être répétée sans aucune restriction.
-Une capture des différentes tentatives est ajoutée au rapport.
 
 ## Impact
 Cette vulnérabilité permet :
@@ -274,7 +272,8 @@ Lorsqu'un utilisateur consulte le ticket, le navigateur exécute le script.
 
 ## Preuves
 - Requête Postman contenant le payload XSS.
-- Capture navigateur montrant l'exécution du JavaScript.
+
+Résultat obtenu : ![Image preuve XSS](imagespreuves/v4-xss-postman.png)
 
 ## Impact
 Cette vulnérabilité peut permettre :
@@ -309,10 +308,8 @@ L'API accepte directement les données envoyées par l'utilisateur sans filtrer 
 Un utilisateur peut modifier des propriétés sensibles comme son rôle.
 
 ## Cause
-Le backend utilise directement les données reçues :
-
+- Le backend utilise directement les données reçues :
 data: body
-
 Tous les champs sont donc modifiables.
 
 ## Exploitation
@@ -326,6 +323,7 @@ L'application applique la modification sans contrôle.
 
 ## Preuve
 Une requête PUT permet de modifier le rôle USER vers ADMIN.
+Résultat obtenu : ![Image preuve](imagespreuves/v5-mass-assignment.png)
 
 ## Impact
 Un attaquant peut obtenir des privilèges administrateur et accéder à des ressources protégées.
@@ -380,7 +378,9 @@ Test réalisé dans le navigateur :
 2. Ouverture des outils développeur.
 3. Navigation vers :
 
-Application
+Résultat obtenu : ![Image preuve local storage](imagespreuves/v6-localstorage-jwt.png)
+
+- Application
  → Local Storage
  → localhost:3000
 
@@ -425,14 +425,13 @@ Après correction :
 - le token est uniquement stocké dans un cookie HttpOnly ;
 - JavaScript ne peut plus récupérer le token.
 
-La tentative :
+- La tentative :
 localStorage.getItem("token")
 
-retourne :
+- retourne :
 null
 
 La faille est considérée comme corrigée.
-
 
 # 7 — Security Misconfiguration / Absence de Security Headers
 ## Type
@@ -473,6 +472,7 @@ Sans protection adaptée, la page peut être chargée dans un autre site.
 ## Preuve
 Test réalisé avec la commande :
 curl -I http://localhost:3000
+Résultat obtenu : ![Image preuve](imagespreuves/v7-security-headers.png)
 
 Résultat observé dans la version vulnerable :
 HTTP/1.1 200 OK
