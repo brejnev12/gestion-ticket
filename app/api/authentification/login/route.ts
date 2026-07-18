@@ -1,31 +1,26 @@
-import { generateToken } from "@/lib/jwt";
 import { NextResponse } from "next/server";
-import prisma from "@/lib/prisma";
-import bcrypt from "bcryptjs";
+import { login } from "@/features/authentification/auth.controller";
 
 export async function POST(request: Request) {
-  const { email, password } = await request.json();
-  const user = await prisma.user.findUnique({
-    where: { email },
-  });
-  if (!user) {
+  try {
+    const body = await request.json();
+    const response = NextResponse.json({
+      message: "Connexion réussie",
+    });
+
+    const data = await login(body, response.cookies);
+    return NextResponse.json(data, {
+      status: 200,
+      headers: response.headers,
+    });
+  } catch (error) {
     return NextResponse.json(
-      { message: "Utilisateur introuvable" },
-      { status: 404 },
+      {
+        message: error instanceof Error ? error.message : "Erreur serveur",
+      },
+      {
+        status: 401,
+      },
     );
   }
-
-  const valid = await bcrypt.compare(password, user.password);
-  if (!valid) {
-    return NextResponse.json(
-      { message: "Mot de passe incorrect" },
-      { status: 401 },
-    );
-  }
-
-  const token = generateToken(user.id);
-  return NextResponse.json({
-    token,
-    user,
-  });
 }

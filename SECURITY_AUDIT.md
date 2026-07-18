@@ -7,12 +7,12 @@ Ce projet consiste à développer une application web de gestion de tickets perm
 ## 2. Liste des vulnérabilités intégrées
 - Broken Access Control / IDOR
 - Information Disclosure
+- Input Validation / Injection Risk
 - Authentification faible
 - Stockage du JWT dans Local Storage
 - Absence de validation des entrées
 - Mass Assignment / Privilege Escalation
 - Security Misconfiguration / Absence de Security Headers
-
 
 # 3. Audit détaillé des vulnérabilités
 
@@ -151,9 +151,63 @@ Seules les informations nécessaires sont renvoyées au client :
 }
 
 ## Validation après correction
-Après correction, la réponse de l'API ne contient plus le champ `password`. Les informations sensibles ne sont plus exposées au client.
+Après correction, La réponse utilisateur est maintenant filtrée avant d'être envoyée au client. Un mapper dédié a été ajouté :![Image preuve code](imagespreuves/v2-password-mapper.png)
 
-# 3 — Authentification faible / Absence de protection contre le brute force
+- Ce traitement permet de supprimer automatiquement les données sensibles.Le backend retourne uniquement les informations nécessaires.
+
+Résultat obtenu : ![Image preuve login](imagespreuves/v2-password-postman.png)
+
+# 3 — Validation insuffisante des entrées
+## Type
+Input Validation / Injection Risk
+
+## Endpoints concernés
+- `POST /api/authentification/register`
+- `POST /api/authentification/login`
+
+## Description
+Dans la version vulnerable, les données envoyées par l'utilisateur sont directement utilisées par l'application sans validation stricte.
+Les champs reçus depuis le client ne sont pas contrôlés avant d'être traités par le backend.
+Exemples de données acceptées :
+
+- email avec un format incorrect ;
+- mot de passe trop court ;
+- champs obligatoires absents ;
+- valeurs inattendues.
+
+## Cause
+La version vulnerable ne possède pas de schéma de validation côté serveur.
+Les données sont directement utilisées :
+
+const body = await request.json();
+await prisma.user.create({
+  data: body
+});
+
+## Exploitation
+Un utilisateur peut envoyer des données invalides à l'API d'inscription ou de connexion
+
+## Preuves
+Test réalisé avec Postman :
+1. Envoi d'une requête d'inscription avec des données invalides.
+2. Utilisation d'un email non conforme.
+3. Utilisation d'un mot de passe trop court.
+
+## Impact
+Cette vulnérabilité peut provoquer :
+1. L'enregistrement de données incorrectes ;
+2. Des erreurs applicatives ;
+3. Un mauvais fonctionnement des fonctionnalités métier ;
+4. Une augmentation du risque d'exploitation par injection.
+
+## Criticité
+Moyenne
+
+## Validation après correction
+Une validation côté serveur a été ajoutée avec la bibliothèque Zod.
+![Image preuve validation zod](imagespreuves/validation-zod.png)
+
+# 4 — Authentification faible / Absence de protection contre le brute force
 ## Type
 Identification and Authentication Failures
 
@@ -242,7 +296,7 @@ Exemple :
   "message": "Trop de tentatives. Réessayez plus tard."
 }
 
-# 4 — Cross-Site Scripting (Stored XSS)
+# 5 — Cross-Site Scripting (Stored XSS)
 ## Type
 Injection
 
@@ -294,7 +348,7 @@ ou ajout d'un système de nettoyage HTML.
 ## Validation après correction
 Les scripts envoyés dans un ticket sont affichés comme du texte et ne sont plus exécutés dans le navigateur.
 
-# 5 — Mass Assignment / Privilege Escalation
+# 6 — Mass Assignment / Privilege Escalation
 ## Type
 Insecure Design
 
@@ -338,7 +392,7 @@ Le rôle ne peut être modifié que par un administrateur.
 Un utilisateur normal ne peut plus modifier son rôle.
 Toute tentative retourne une erreur d'autorisation.
 
-# 6 — JWT mal sécurisé / Stockage du token dans Local Storage
+# 7 — JWT mal sécurisé / Stockage du token dans Local Storage
 ## Type
 Identification and Authentication Failures
 
@@ -420,19 +474,24 @@ response.cookies.set(
 
 ## Validation après correction
 Après correction :
-- aucun token JWT n'est présent dans le Local Storage ;
-- le token est uniquement stocké dans un cookie HttpOnly ;
-- JavaScript ne peut plus récupérer le token.
+- le JWT n'est plus stocké dans le Local Storage ;
+- le token est envoyé uniquement via des cookies HttpOnly ;
+- le navigateur contient :
+  - access_token
+  - refresh_token
 
-- La tentative :
+La récupération :
 localStorage.getItem("token")
 
-- retourne :
+Résultat obtenu : ![Image preuve local storage](imagespreuves/jwt-cookies.png)
+
+retourne :
 null
 
+Les cookies HttpOnly empêchent l'accès au token depuis JavaScript.
 La faille est considérée comme corrigée.
 
-# 7 — Security Misconfiguration / Absence de Security Headers
+# 8 — Security Misconfiguration / Absence de Security Headers
 ## Type
 Security Misconfiguration
 
