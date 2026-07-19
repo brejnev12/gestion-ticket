@@ -227,21 +227,22 @@ Identification and Authentication Failures
 - `POST /api/authentification/login`
 
 ## Description
-L'application ne possède pas de mécanisme de limitation des tentatives de connexion.
-Un attaquant peut envoyer un grand nombre de requêtes avec différents mots de passe afin de tenter de découvrir le mot de passe d'un utilisateur.
+Dans la version vulnerable, l'application ne possède aucun mécanisme de limitation des tentatives de connexion.
+Un attaquant peut envoyer un grand nombre de requêtes avec différents mots de passe afin de tenter de découvrir les identifiants d'un utilisateur.
+
+L'API traite chaque tentative de connexion sans appliquer de restriction.
 
 ## Cause
-L'API de connexion vérifie uniquement les identifiants fournis :
+L'API de connexion vérifie uniquement les informations fournies :
+- email ;
+- password.
 
-email + password
+Aucune protection contre les attaques automatisées n'est présente :
+- absence de rate limiting ;
+- absence de limitation du nombre de requêtes ;
+- absence de blocage temporaire.
 
-mais ne limite pas le nombre de tentatives échouées.
-Aucun système de :
-- rate limiting ;
-- blocage temporaire ;
-- délai entre les tentatives ;
-
-n'est présent dans la version vulnerable.
+Dans la version vulnerable, une même adresse IP peut effectuer un nombre illimité de tentatives de connexion.
 
 ## Exploitation
 Un attaquant peut envoyer plusieurs requêtes successives :
@@ -290,9 +291,10 @@ Elevée
 
 ## Correction appliquée (branche `secure`)
 Ajout d'un système de limitation des tentatives de connexion :
-- limitation par adresse IP ;
-- limitation par email ;
-- blocage temporaire après plusieurs échecs.
+- Limitation par adresse IP ;
+- Une limite maximale de tentatives ;
+- Limitation par email ;
+- Blocage temporaire après plusieurs échecs.
 
 Exemple :
 Si 5 tentatives échouent,
@@ -302,11 +304,11 @@ bloquer temporairement la connexion.
 Après correction :
 - plusieurs tentatives échouées déclenchent une limitation ;
 - l'API retourne une erreur `429 Too Many Requests`.
-
 Exemple :
 {
   "message": "Trop de tentatives. Réessayez plus tard."
 }
+Résultat obtenu : ![Image preuve ](imagespreuves/rateLimt.png)
 
 # 5 — Cross-Site Scripting (Stored XSS)
 ## Type
@@ -516,26 +518,26 @@ Toutes les réponses HTTP de l'application sont concernées.
 L'application ne configure pas certains headers HTTP de sécurité permettant de renforcer la protection du navigateur.
 L'absence de ces protections peut faciliter certaines attaques comme :
 - Clickjacking ;
-- attaques XSS ;
-- interprétation incorrecte du contenu ;
-- exploitation de certaines failles côté navigateur.
+- Attaques XSS ;
+- Interprétation incorrecte du contenu ;
+- Exploitation de certaines failles côté navigateur.
 
 ## Cause technique
 La version vulnerable ne définit pas de middleware de sécurité ajoutant des headers HTTP.
 Les réponses serveur ne contiennent pas de protections supplémentaires comme :
-X-Frame-Options
-X-Content-Type-Options
-Content-Security-Policy
-Strict-Transport-Security
+- X-Frame-Options
+- X-Content-Type-Options
+- Content-Security-Policy
+- Referrer-Policy
 
 ## Exploitation
 Un attaquant peut profiter de l'absence de ces protections pour :
-- intégrer l'application dans une iframe malveillante;
-- augmenter l'impact d'une vulnérabilité XSS ;
-- exploiter des comportements non sécurisés du navigateur.
+- Intégrer l'application dans une iframe malveillante;
+- Augmenter l'impact d'une vulnérabilité XSS ;
+- Exploiter des comportements non sécurisés du navigateur.
 
 Exemple :
-<iframe src="http://localhost:3000/dashboard"></iframe>
+<iframe src="http://localhost:3000/administration"></iframe>
 
 Sans protection adaptée, la page peut être chargée dans un autre site.
 
@@ -552,15 +554,17 @@ Les headers de sécurité attendus sont absents.
 Capture de la réponse HTTP ajoutée au rapport.
 ## Impact
 Cette mauvaise configuration peut permettre :
-- des attaques Clickjacking ;
-- une réduction de la protection contre les attaques XSS ;
-- une augmentation de la surface d'attaque côté navigateur.
+- Des attaques Clickjacking ;
+- Une réduction de la protection contre les attaques XSS ;
+- Une augmentation de la surface d'attaque côté navigateur.
 
 ## Criticité
 Moyenne
 
 ## Correction appliquée (branche `secure`)
-Ajout d'un middleware Next.js permettant d'ajouter les headers de sécurité.
+Un middleware Next.js a été ajouté afin d'ajouter automatiquement des headers de sécurité sur les réponses HTTP.
+Fichier concerné :
+- middleware.ts
 
 Exemple :
 import { NextResponse } from "next/server";
@@ -594,3 +598,4 @@ X-Frame-Options: DENY
 Content-Security-Policy: default-src 'self'
 
 La configuration de sécurité du navigateur est renforcée.
+Résultat obtenu : ![Image preuve middleware](imagespreuves/middleware.png)
