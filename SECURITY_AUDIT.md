@@ -26,7 +26,8 @@ Broken Access Control (IDOR / BOLA)
 - `DELETE /api/tickets/[id]`
 
 ## Description
-Les opérations de consultation, de modification et de suppression d'un ticket sont réalisées uniquement à partir de son identifiant (`id`). L'application ne vérifie pas que le ticket appartient à l'utilisateur authentifié.
+Les opérations de consultation, de modification et de suppression d'un ticket sont réalisées uniquement à partir de son identifiant (`id`).Dans la version vulnerable, l'application ne vérifie pas que le ticket demandé appartient réellement à l'utilisateur authentifié.
+Un utilisateur connecté peut donc manipuler l'identifiant présent dans l'URL afin d'accéder aux ressources d'un autre utilisateur.
 
 ## Cause
 Les méthodes utilisent uniquement l'identifiant du ticket :
@@ -35,23 +36,26 @@ Les méthodes utilisent uniquement l'identifiant du ticket :
 - `delete()` pour supprimer un ticket.
 
 Aucune vérification n'est effectuée sur le propriétaire du ticket (`userId`).
+Exemple :
+prisma.ticket.findUnique({
+  where:{
+    id:Number(id)
+  }
+})
 
 ## Exploitation
 Un utilisateur authentifié peut modifier l'identifiant du ticket dans l'URL et accéder aux tickets d'un autre utilisateur.
 
 Exemples :
-```http
+```
 GET /api/tickets/2
 ```
-
-```http
+```
 PUT /api/tickets/2
 ```
-
-```http
+```
 DELETE /api/tickets/2
 ```
-
 Si le ticket appartient à un autre utilisateur, l'application autorise malgré tout l'opération.
 
 ## Preuves
@@ -73,9 +77,14 @@ Des captures d'écran des requêtes et des réponses sont jointes au rapport.
 
 ## Impact
 Cette vulnérabilité permet à un utilisateur malveillant de :
-- consulter les données d'un autre utilisateur ;
+- consulter les données privées d'un autre utilisateur ;
 - modifier un ticket qui ne lui appartient pas ;
-- supprimer un ticket appartenant à un autre utilisateur.
+- supprimer des données appartenant à un autre compte;
+
+Elle compromet :
+- La confidentialité des données ;
+- L'intégrité des informations ;
+- La séparation entre utilisateurs.
 
 ## Criticité
 Élevée
@@ -98,8 +107,11 @@ Après application de la correction :
 - un utilisateur ne peut consulter que ses propres tickets ;
 - un utilisateur ne peut modifier que ses propres tickets ;
 - un utilisateur ne peut supprimer que ses propres tickets.
-
+{
+  "message": "Accès interdit"
+}
 Les tentatives d'accès à un ticket appartenant à un autre utilisateur sont désormais refusées.
+Résultat obtenu : ![Image preuve preuve](imagespreuves/idor-correction.png)
 
 # 2 — Information Disclosure
 ## Type
