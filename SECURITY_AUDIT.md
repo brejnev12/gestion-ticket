@@ -39,9 +39,23 @@ npm install
 
 
 ### Configuration
-Créer un fichier `.env` contenant notamment :
-DATABASE_URL="mysql://..."
-JWT_SECRET="votre_secret"
+#### Pour la version secure
+- Créer un fichier `.env` contenant notamment :
+- DATABASE_URL="mysql://..."
+-JWT_ACCESS_SECRET=access_secret_secure_change_me
+- JWT_REFRESH_SECRET=refresh_secret_secure_change_me
+- JWT_ACCESS_EXPIRE=15m
+- JWT_REFRESH_EXPIRE=7d
+- JWT_SECRET="votre_secret"
+
+#### Pour la version vulnérable
+- Créer un fichier `.env` contenant notamment :
+- DATABASE_URL="mysql://..."
+-JWT_ACCESS_SECRET=access_secret_secure_change_me
+- JWT_REFRESH_SECRET=refresh_secret_secure_change_me
+- JWT_ACCESS_EXPIRE=15m
+- JWT_REFRESH_EXPIRE=7d
+- JWT_SECRET="votre_secret"
 
 
 ### Migration Prisma
