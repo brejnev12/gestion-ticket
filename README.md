@@ -52,4 +52,12 @@ npm run dev
 L'application est accessible à l'adresse :
 http://localhost:3000
 
+## Branches
+- vulnerable :
+  Version contenant les vulnérabilités étudiées.
+- secure :
+  Version corrigée avec les protections mises en place.
+- main :
+  Version finale recommandée.
+
 
