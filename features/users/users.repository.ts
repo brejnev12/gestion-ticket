@@ -29,7 +29,10 @@ export async function updateUser(id: number, data: UpdateUser) {
     where: {
       id,
     },
-    data,
+    data: {
+      name: data.name,
+      email: data.email,
+    },
     select: {
       id: true,
       name: true,
