@@ -8,14 +8,11 @@ async function getUser(request: Request) {
     .get("cookie")
     ?.split("access_token=")[1]
     ?.split(";")[0];
-
   if (!token) {
     throw new Error("Non authentifié");
   }
-
   return verifyAccessToken(token);
 }
-
 export async function GET(
   request: Request,
   {
@@ -53,13 +50,9 @@ export async function PUT(
 ) {
   try {
     const user = await getUser(request);
-
     const { id } = await params;
-
     const body = await request.json();
-
     const ticket = await TicketController.update(Number(id), body, user.idUser);
-
     return NextResponse.json(ticket);
   } catch (error) {
     return NextResponse.json(
