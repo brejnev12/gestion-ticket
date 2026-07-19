@@ -599,3 +599,24 @@ Content-Security-Policy: default-src 'self'
 
 La configuration de sécurité du navigateur est renforcée.
 Résultat obtenu : ![Image preuve middleware](imagespreuves/middleware.png)
+
+# 9 — Pipeline DevSecOps
+## Objectif
+Automatiser les contrôles de sécurité avant déploiement.
+
+## Outil utilisé
+GitHub Actions
+
+## Contrôles réalisés
+- SAST : Semgrep
+- SCA : npm audit
+- Secret scanning : Gitleaks
+- DAST : OWASP ZAP
+
+## Déclenchement
+La pipeline s'exécute sur :
+- push sur secure
+- pull request vers secure
+
+## Résultat
+Une modification contenant une vulnérabilité critique ou un secret exposé provoque l'échec de la pipeline.
